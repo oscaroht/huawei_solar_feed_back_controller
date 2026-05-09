@@ -66,7 +66,7 @@ def get_current_price():
    
     # in the response UTC is used instead of local time. Yes, really...
     utc_now = datetime.now(UTC)
-    utc_start_time = utc_now.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+    utc_start_time = utc_now.replace(minute=0, second=0, microsecond=0)
     start = utc_start_time.strftime("%Y-%m-%dT%H:%M:%SZ")  # format utc_now in the same way as in the api response
     end = utc_start_time + timedelta(hours=1)
     # iterate the response json to find the price for the current hour
