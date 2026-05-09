@@ -48,6 +48,7 @@ def log(text: str):
     data = { "content": text }
     requests.request("POST", DISCORD_WEBHOOK_URL_OPPORTUNITIES,  data=data)
 
+log("test if gets pulled")
 
 def get_current_price():
     """Find the price of the current hour"""
