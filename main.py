@@ -26,9 +26,11 @@ PERCENTAGE_ACTIVE_POWER_DERATING_REGISTER = 40125  # % between 0 and 1000 for 0.
 FIXED_KW_ACTIVE_POWER_DERATING_REGISTER = 40126  # 0 for 0W, 1000 for 1000W
 ACTIVE_POWER_REGISTER = 32080  # Amount of power the panels deliver
 
+P1_REFRESH_SECONDS = 20
+
 class Status(Enum):
     """Determines what on and off mean. This is either max power or min power."""
-    ON  = 3000
+    ON  = 4000
     OFF = 0
 
 # collect and check the env variable
@@ -47,8 +49,6 @@ def log(text: str):
     print(text)
     data = { "content": text }
     requests.request("POST", DISCORD_WEBHOOK_URL_OPPORTUNITIES,  data=data)
-
-log("test if gets pulled")
 
 def get_current_price():
     """Find the price of the current hour"""
@@ -98,9 +98,9 @@ try:
         write_register(40126, [0, Status.OFF.value])
     else:
         print("Match internal use")
-        while datetime.now(UTC) < end: # time.time() - start_time < (60 * 60 - 10):  # for the next hour
-            print("Sleep 10s")
-            time.sleep(10)  # p1 delivers a new telegram every 10sec
+        while datetime.now(UTC) < end: # while the current price is valid
+            print(f"Sleep {P1_REFRESH_SECONDS}s")
+            time.sleep(P1_REFRESH_SECONDS)  # p1 delivers a new telegram every 10sec
             p1 = get_p1_data()
             power_balance = p1['active_power_w']  # negative when feeding back
             print(f"active_power balance from p1 {power_balance} (negative when feeding back)")
@@ -119,10 +119,21 @@ try:
                 _, power_generated = response.registers
                 print(f"Panels generate {power_generated}W")
 
-                if max_power > power_generated:
-                    print("The power limit is higher than the generated power.")
+                power_consumed = power_balance + power_generated   # power_balance is negative when feeding back
+                print(f"Power consumed: {power_consumed}W")
+
+                if power_consumed < 0:
+                    # the power_generated has a 0 sampling rate while the p1 has a ...sec sampling rate
+                    # this leads to old telegrams being send over the api that distort the calculation
+                    print("Data not synced. Continue")
+                    time.sleep(1)
                     continue
-                new_max_power = int(max_power + power_balance)
+
+                new_max_power = min(int(power_consumed), Status.ON.value)
+                if new_max_power == max_power:
+                    print("No change needed")
+                    continue
+                print(f"New fixed max power: {new_max_power}W")
                 response = client.write_registers(FIXED_KW_ACTIVE_POWER_DERATING_REGISTER, [0, new_max_power])
                 if response.isError():
                     raise Exception(f"Inverter Error Response while writing FIXED_KW_ACTIVE_POWER_DERATING_REGISTER: {response}")
