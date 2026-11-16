@@ -1,0 +1,15 @@
+services:
+  solar-controller:
+    build: .
+    image: huawei-solar-feed-back-controller:latest
+    container_name: huawei-solar-feed-back-controller
+    restart: unless-stopped
+    init: true  # forwards SIGTERM to python so it can reset the inverter
+    stop_grace_period: 30s  # time to reach the inverter before Docker kills the container
+    env_file: .env  # DISCORD_WEBHOOK_URL_OPPORTUNITIES, INVERTER_IP, PORT, P1_IP
+                    # optional: LATITUDE, LONGITUDE, SUN_ELEVATION_DEGREES (default -8)
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"  # keep the Pi's SD card from filling up
+        max-file: "3"

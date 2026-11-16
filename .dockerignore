@@ -1,0 +1,8 @@
+.git
+.env
+.envrc
+venv/
+.venv/
+__pycache__/
+*.pdf
+run.sh
